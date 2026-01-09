@@ -14,101 +14,82 @@ O objetivo é construir um sistema robusto de assinaturas onde múltiplas empres
 
 * **Linguagem:** Java 21+
 * **Framework:** Spring Boot 3.x
-* **Banco de Dados:** PostgreSQL
+* **Gerenciador de Dependências:** Maven
+* **Banco de Dados:** H2 (Desenvolvimento inicial) / PostgreSQL (Produção)
 * **Migrações:** Flyway
 * **Documentação:** Springdoc OpenAPI (Swagger)
 * **Segurança:** Spring Security + JWT
-* **Ferramentas:** Docker & Docker Compose
+* **Ferramentas:** Docker & Docker Compose (Futuro)
 
-## 3. Inicialização do Projeto (Spring Initializr)
+## 3. Estado Inicial do Projeto
 
-Acesse [start.spring.io](https://start.spring.io/) e selecione as seguintes dependências:
+O projeto foi inicializado com as seguintes dependências no `pom.xml`:
 
 1. **Spring Web:** Para criação da API REST.
 2. **Spring Data JPA:** Para persistência de dados.
-3. **PostgreSQL Driver:** Driver de conexão com o banco.
-4. **Flyway Migration:** Gerenciamento de versões do banco de dados.
-5. **Validation:** Bean Validation para validação de dados de entrada.
-6. **Lombok:** Para reduzir boilerplate code (Getters/Setters).
-7. **Spring Security:** Para autenticação e autorização.
-8. **Springdoc OpenAPI:** Para gerar o Swagger automaticamente.
-9. **Spring Modulith (Opcional/Recomendado):** Para validar a estrutura modular.
+3. **Spring Security:** Para autenticação e autorização (Configuração inicial).
+4. **Lombok:** Para reduzir boilerplate code.
+5. **Validation:** Bean Validation para entradas.
+6. **Flyway Migration:** Gerenciamento de schema.
+7. **Springdoc OpenAPI:** Documentação interativa (Swagger).
+
+A configuração atual utiliza banco **H2 em memória** para agilizar o desenvolvimento das regras de negócio.
 
 ---
 
-## 4. Exemplo Estrutura de Pastas (Modular)
+## 4. Estrutura de Pastas (Modular)
+
+A arquitetura segue o padrão de **Monolito Modular**. O código é dividido por domínios em `modules/` e recursos técnicos compartilhados em `shared/`.
 
 ```text
 src/main/java/com/projeto/subscription/
 ├── modules/
 │   ├── identity/                 # Gestão de usuários e acesso
-│   │   ├── controller/           # Endpoints de login, registro e perfil
-│   │   ├── service/              # Lógica de BCrypt, geração de JWT
-│   │   ├── model/                # Entidade User e Role
-│   │   ├── repository/           # Interface JpaRepository
-│   │   └── dto/                  # Request/Response (UserRequest, AuthResponse)
+│   │   ├── controller/           
+│   │   ├── service/              
+│   │   ├── model/                # Entidade User (id, name, email, password)
+│   │   ├── repository/           
+│   │   └── dto/                  
 │   │
 │   ├── tenant/                   # Gestão das Empresas (Tenants)
-│   │   ├── controller/           # Endpoints para cadastrar/editar empresas
-│   │   ├── service/              # Lógica de ativação/bloqueio de tenant
 │   │   ├── model/                # Entidade Tenant
-│   │   └── repository/           
 │   │
 │   ├── plan/                     # Catálogo de Planos
-│   │   ├── controller/           # Listagem de planos para o público
-│   │   ├── service/              # Regras de upgrade/downgrade de planos
-│   │   ├── model/                # Entidade Plan e Feature
-│   │   ├── repository/
-│   │   └── dto/                  # PlanResponse
 │   │
-│   └── billing/                  # Faturamento e Assinaturas (O mais complexo)
-│       ├── controller/           # Checkout e histórico de faturas
-│       ├── service/              # Integração com Stripe e renovação
-│       ├── model/                # Entidade Subscription e Invoice
-│       ├── repository/
-│       ├── client/               # Classes que chamam a API externa (StripeClient)
-│       └── dto/                  # CheckoutRequest, WebhookEventDTO
+│   └── billing/                  # Faturamento e Assinaturas
 │
 ├── shared/                       # O "Coração Técnico" compartilhado
-│   ├── config/                   # Beans de configuração (Security, Swagger, CORS)
-│   ├── exception/                # Handler global (@ControllerAdvice) e exceções customizadas
-│   ├── tenant_context/           # Lógica do Multi-tenancy (Filtros, ThreadLocal)
-│   ├── security/                 # Filtros JWT e UserDetailsService
-│   └── util/                     # Classes utilitárias (Data, Formatação, Mappers)
+│   ├── config/                   # Beans (Security, Swagger)
+│   ├── exception/                # Handler global
+│   ├── tenant_context/           # Multi-tenancy (X-Tenant-ID via Filter/ThreadLocal)
+│   └── util/                     
 │
-└── SubscriptionApplication.java  # Classe principal do Spring Boot
-
+└── SubscriptionApplication.java  
 ```
 
 ---
 
-## 5. Passo a Passo Inicial
+## 5. Checklist de Progresso
 
 ### Fase 1: Setup do Ambiente
-
-* [ ] Gerar o projeto no Spring Initializr.
-* [ ] Configurar `docker-compose.yml` com a imagem do PostgreSQL e Redis.
-* [ ] Configurar `application.yml` para conectar ao banco Docker.
+* [x] Gerar o projeto no Spring Initializr.
+* [x] Configurar `application.properties` para banco H2 e Console H2.
+* [ ] Configurar `docker-compose.yml` (PostgreSQL/Redis) - *Pendente para fase de produção*.
 * [ ] Criar a primeira migration Flyway para a tabela de `tenants`.
 
-### Fase 2: O Coração do Sistema (Multi-tenancy)
-
-* [ ] Criar o `TenantContext` (usando `ThreadLocal`) para armazenar o ID da empresa durante a requisição.
-* [ ] Implementar um **Filter** ou **Interceptor** que captura o `X-Tenant-ID` do header e injeta no contexto.
-* [ ] Configurar o `@Filter` do Hibernate para filtrar automaticamente as queries pelo `tenant_id`.
+### Fase 2: Estratégia de Isolamento (Multi-tenancy)
+* [ ] Criar o `TenantContext` usando `ThreadLocal`.
+* [ ] Implementar Filtro para capturar `X-Tenant-ID`.
+* [ ] Configurar `@Filter` do Hibernate para isolamento automático.
 
 ### Fase 3: Módulo de Identidade & Auth
+* [ ] Finalizar entidade `User` e criar Repositories.
+* [ ] Implementar Service de Identidade (BCrypt/JWT).
+* [ ] Configurar Spring Security.
 
-* [ ] Implementar cadastro de usuários vinculados a um Tenant.
-* [ ] Configurar Spring Security para validar JWT.
-
-### Fase 4: Módulo de Planos e Cobrança
-
-* [ ] Criar CRUD de planos.
-* [ ] Integrar SDK do Stripe para criação de `Checkout Sessions`.
-* [ ] Criar endpoint de Webhook para processar confirmações de pagamento.
-
----
+### Fase 4: Planos e Cobrança
+* [ ] CRUD de Planos.
+* [ ] Integração com Stripe e Webhooks.
 
 ## 6. Decisões de Design (Justificativas para o Portfólio)
 
