@@ -9,7 +9,7 @@ import com.projeto.subscription.modules.identity.dto.UserRequestDTO;
 import com.projeto.subscription.modules.identity.dto.UserResponseDTO;
 import com.projeto.subscription.modules.identity.model.User;
 import com.projeto.subscription.modules.identity.repository.UserRepository;
-import com.projeto.subscription.shared.tentant_context.TenantContext;
+import com.projeto.subscription.shared.tenant_context.TenantContext;
 
 @Service
 public class UserService {

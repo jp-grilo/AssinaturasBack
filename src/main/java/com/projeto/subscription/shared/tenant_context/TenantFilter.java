@@ -1,4 +1,4 @@
-package com.projeto.subscription.shared.tentant_context;
+package com.projeto.subscription.shared.tenant_context;
 
 import java.io.IOException;
 import java.util.UUID;
