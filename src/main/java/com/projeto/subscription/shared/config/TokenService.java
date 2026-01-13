@@ -1,6 +1,8 @@
 package com.projeto.subscription.shared.config;
 
 import com.projeto.subscription.modules.identity.model.User;
+
+import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
 import org.springframework.beans.factory.annotation.Value;
@@ -30,16 +32,20 @@ public class TokenService {
                 .compact();
     }
 
-    public String validateToken(String token) {
+    public Claims getClaims(String token) {
         try {
             return Jwts.parser()
                     .verifyWith(getSigningKey())
                     .build()
                     .parseSignedClaims(token)
-                    .getPayload()
-                    .getSubject();
+                    .getPayload();
         } catch (Exception e) {
-            return null;
+            return null; // TODO: handle exception
         }
+    }
+
+    public String validateToken(String token) {
+        Claims claims = getClaims(token);
+        return claims != null ? claims.getSubject() : null;
     }
 }

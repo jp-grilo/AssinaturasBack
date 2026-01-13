@@ -1,6 +1,9 @@
 package com.projeto.subscription.shared.config;
 
 import com.projeto.subscription.modules.identity.repository.UserRepository;
+import com.projeto.subscription.shared.tenant_context.TenantContext;
+
+import io.jsonwebtoken.Claims;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -11,6 +14,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
+import java.util.UUID;
 
 @Component
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
@@ -27,15 +31,30 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
             throws ServletException, IOException {
         String token = recoveryToken(request);
-        String login = tokenService.validateToken(token);
 
-        if (login != null) {
-            userRepository.findByEmail(login).ifPresent(user -> {
-                var authentication = new UsernamePasswordAuthenticationToken(user, null, null);
-                SecurityContextHolder.getContext().setAuthentication(authentication);
-            });
+        try {
+            Claims claims = tokenService.getClaims(token);
+
+            if (claims != null) {
+
+                String login = claims.getSubject();
+                String tenantId = claims.get("tenantId", String.class);
+
+                if (tenantId != null) {
+                    TenantContext.setCurrentTenant(UUID.fromString(tenantId));
+                }
+
+                userRepository.findByEmail(login).ifPresent(user -> {
+                    var authentication = new UsernamePasswordAuthenticationToken(user, null, null);
+                    SecurityContextHolder.getContext().setAuthentication(authentication);
+                });
+            }
+            filterChain.doFilter(request, response);
+
+        } finally {
+            TenantContext.clear();
         }
-        filterChain.doFilter(request, response);
+
     }
 
     private String recoveryToken(HttpServletRequest request) {
