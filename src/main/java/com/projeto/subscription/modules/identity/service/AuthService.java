@@ -29,6 +29,6 @@ public class AuthService {
         }
 
         String token = tokenService.generateToken(user);
-        return new AuthResponseDTO(token);
+        return new AuthResponseDTO(token, user.getRole());
     }
 }
