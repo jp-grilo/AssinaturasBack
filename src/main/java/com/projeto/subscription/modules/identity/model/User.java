@@ -3,6 +3,7 @@ package com.projeto.subscription.modules.identity.model;
 import java.util.UUID;
 
 import com.projeto.subscription.shared.util.BaseEntity;
+import com.projeto.subscription.shared.util.Enums.UserRole;
 
 import jakarta.persistence.Entity;
 import jakarta.persistence.Table;
@@ -37,4 +38,7 @@ public class User extends BaseEntity {
 
     @Column(nullable = false)
     private String password;
+
+    @Column(nullable = false)
+    private UserRole role;
 }

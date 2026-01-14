@@ -28,6 +28,7 @@ public class UserService {
                 .name(dto.name())
                 .email(dto.email())
                 .password(passwordEncoder.encode(dto.password()))
+                .role(dto.role())
                 .build();
 
         user.setTenantId(TenantContext.getCurrentTenant());
@@ -37,7 +38,8 @@ public class UserService {
         return new UserResponseDTO(
                 savedUser.getId(),
                 savedUser.getName(),
-                savedUser.getEmail());
+                savedUser.getEmail(),
+                savedUser.getRole());
     }
 
     public List<UserResponseDTO> list() {
@@ -46,7 +48,8 @@ public class UserService {
                 .map(user -> new UserResponseDTO(
                         user.getId(),
                         user.getName(),
-                        user.getEmail()))
+                        user.getEmail(),
+                        user.getRole()))
                 .toList();
     }
 
