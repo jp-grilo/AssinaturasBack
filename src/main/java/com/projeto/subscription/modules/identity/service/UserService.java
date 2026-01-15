@@ -4,6 +4,7 @@ import java.util.List;
 
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import com.projeto.subscription.modules.identity.dto.UserRequestDTO;
 import com.projeto.subscription.modules.identity.dto.UserResponseDTO;
@@ -22,6 +23,7 @@ public class UserService {
         this.passwordEncoder = passwordEncoder;
     }
 
+    @Transactional
     public UserResponseDTO create(UserRequestDTO dto) {
 
         User user = User.builder()
@@ -42,6 +44,7 @@ public class UserService {
                 savedUser.getRole());
     }
 
+    @Transactional(readOnly = true)
     public List<UserResponseDTO> list() {
         return userRepository.findAll()
                 .stream()

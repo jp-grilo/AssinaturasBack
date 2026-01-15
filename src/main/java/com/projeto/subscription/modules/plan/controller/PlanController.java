@@ -2,6 +2,7 @@ package com.projeto.subscription.modules.plan.controller;
 
 import java.util.List;
 
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -24,6 +25,7 @@ public class PlanController {
     }
 
     @PostMapping
+    @PreAuthorize("hasRole('ADMIN')")
     public PlanResponseDTO create(@RequestBody @Valid PlanRequestDTO plan) {
         return planService.create(plan);
     }

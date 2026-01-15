@@ -3,6 +3,7 @@ package com.projeto.subscription.modules.plan.service;
 import java.util.List;
 
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import com.projeto.subscription.modules.plan.dto.PlanRequestDTO;
 import com.projeto.subscription.modules.plan.dto.PlanResponseDTO;
@@ -19,6 +20,7 @@ public class PlanService {
         this.planRepository = planRepository;
     }
 
+    @Transactional
     public PlanResponseDTO create(PlanRequestDTO planDTO) {
 
         Plan plan = Plan.builder()
@@ -40,6 +42,7 @@ public class PlanService {
                 savedPlan.getBillingCycle());
     }
 
+    @Transactional(readOnly = true)
     public List<PlanResponseDTO> list() {
         return planRepository.findAll()
                 .stream()
