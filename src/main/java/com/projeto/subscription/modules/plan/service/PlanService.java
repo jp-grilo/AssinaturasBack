@@ -19,13 +19,13 @@ public class PlanService {
         this.planRepository = planRepository;
     }
 
-    public PlanResponseDTO create(PlanRequestDTO dto) {
+    public PlanResponseDTO create(PlanRequestDTO planDTO) {
 
         Plan plan = Plan.builder()
-                .name(dto.name())
-                .description(dto.description())
-                .price(dto.price())
-                .billingCycle(dto.billingCycle())
+                .name(planDTO.name())
+                .description(planDTO.description())
+                .price(planDTO.price())
+                .billingCycle(planDTO.billingCycle())
                 .build();
 
         plan.setTenantId(TenantContext.getCurrentTenant());
