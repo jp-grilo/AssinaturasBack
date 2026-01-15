@@ -6,4 +6,9 @@ public class Enums {
         ADMIN,
         CLIENT
     }
+
+    public enum BillingCycle {
+        MONTHLY,
+        YEARLY
+    }
 }
