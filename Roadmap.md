@@ -1,6 +1,6 @@
 
 
-# 🚀 Projeto 1: Sistema de Gestão de Assinaturas (Multi-tenant)
+# Sistema de Gestão de Assinaturas (Multi-tenant)
 
 ## 1. Visão Geral e Arquitetura
 
@@ -31,7 +31,84 @@ O projeto foi inicializado com as seguintes dependências no `pom.xml`:
 4. **Lombok:** Para reduzir boilerplate code.
 5. **Validation:** Bean Validation para entradas.
 6. **Flyway Migration:** Gerenciamento de schema.
-7. **Springdoc OpenAPI:** Documentação interativa (Swagger).
+7. **Springdoc OpenAPI:** Documentaçã# 🚀 Projeto 1: Sistema de Gestão de Assinaturas (Multi-tenant)
+
+## 1. Visão Geral e Arquitetura
+O objetivo é construir um sistema de assinaturas multi-tenant, onde múltiplas empresas (Tenants) gerenciam clientes e planos de forma isolada.
+
+- **Arquitetura:** Monolito Modular.
+- **Multi-tenancy:** Coluna `tenant_id` + Hibernate Filter (`tenantFilter`) habilitado por AOP.
+- **Comunicação interna:** Injeção de interfaces; eventos Spring como evolução.
+
+## 2. Stack Técnica (Backend)
+- **Java 21+**, **Spring Boot 3.x**, **Maven**
+- **JPA/Hibernate**, **Spring Security + JWT**
+- **H2 (dev)**, **PostgreSQL (prod)**, **Flyway** (a habilitar)
+- **Springdoc OpenAPI**
+- **Docker/Compose** (planejado)
+
+## 3. Estado Atual do Código
+- **Multi-tenancy base:** `BaseEntity` com `tenant_id` e `@Filter`; `TenantContext` (ThreadLocal) e `TenantAspect` habilitando filtro antes dos repositórios.
+- **Filtro de Tenant:** `TenantFilter` criado, mas o parsing/registro do `X-Tenant-ID` está incompleto e ainda não está claro se foi adicionado à chain do Spring Security.
+- **Segurança/JWT:** `TokenService`, `JwtAuthenticationFilter` e `SecurityConfig` existem, porém com trechos não implementados (`...`). Regras de autorização e ordem dos filtros precisam ser confirmadas.
+- **Identidade:** Entidade `User` criada, controller e DTOs prontos; `UserService`/`AuthService` têm trechos não implementados. Campos de senha/role não estão na entidade (apenas em DTO), e o repositório está pronto.
+- **Tenants:** Entidade e repositório prontos; não há controller/service nem seed/migration.
+- **Planos:** Entidade, DTOs, service (create/list) e controller prontos. O `tenantId` é atribuído via `TenantContext` no service. Campo `active` é obrigatório, mas não está sendo definido na criação (pode falhar em runtime).
+- **Infra:** `application.properties` configurado para H2 em memória, Flyway desabilitado, `ddl-auto=update`. `pom.xml` ainda não lista dependências (necessário completar).
+- **Migrations:** Nenhuma migration criada (Flyway off).
+
+## 4. Estrutura de Pastas
+```
+src/main/java/com/projeto/subscription/
+├── modules/
+│   ├── identity/ (controllers, services, model User, repository, DTOs)
+│   ├── tenant/   (model Tenant, repository)
+│   └── plan/     (controllers, services, model Plan, repository, DTOs)
+└── shared/
+    ├── config/ (Security/JWT - incompletos)
+    ├── exception/ (handler global)
+    └── tenant_context/ (TenantContext, TenantFilter, TenantAspect)
+```
+
+## 5. Checklist de Progresso
+
+### Fase 1: Setup do Ambiente
+- [x] Gerar o projeto no Spring Initializr.
+- [x] Configurar `application.properties` para H2 e console H2.
+- [ ] Configurar `docker-compose.yml` (PostgreSQL/Redis).
+- [ ] Criar migrations Flyway (tenants, users, plans, etc.).
+- [ ] Completar `pom.xml` com as dependências efetivamente usadas.
+
+### Fase 2: Estratégia de Isolamento (Multi-tenancy)
+- [x] Criar o `TenantContext` usando `ThreadLocal`.
+- [ ] Implementar o filtro para capturar `X-Tenant-ID` (parsing UUID + set/clear no contexto) e garantir registro na cadeia de filtros.
+- [x] Configurar `@Filter` do Hibernate via `BaseEntity` + `TenantAspect`.
+- [ ] Garantir que todas as entidades multi-tenant estendam `BaseEntity` (User não usa `tenant_id` hoje).
+
+### Fase 3: Módulo de Identidade & Auth
+- [ ] Completar entidade `User` (senha, role, tenant_id) e repositórios.
+- [ ] Implementar `UserService` (hash de senha, role default, tenant).
+- [ ] Implementar `AuthService` (login, validação de senha, retorno de JWT com role/tenant).
+- [ ] Finalizar `TokenService`, `JwtAuthenticationFilter` e `SecurityConfig` (regras de autorização, ordem dos filtros, stateless).
+- [ ] Adicionar endpoints de registro se necessário.
+
+### Fase 4: Planos e Cobrança
+- [ ] Ajustar criação de plano para preencher `active` (default true) e validar tenant.
+- [ ] CRUD completo de planos (update/delete/toggle active).
+- [ ] Integração Stripe + webhooks (futuro).
+
+## 6. Próximos Passos Imediatos
+1. Completar `pom.xml` com starters Web, Security, JPA, Validation, Lombok, H2, JWT (jjwt-api/impl/jackson), Springdoc.
+2. Finalizar `TokenService`, `JwtAuthenticationFilter` e `SecurityConfig`; registrar `TenantFilter` antes da chain de segurança (ou dentro dela) para popular `TenantContext`.
+3. Ajustar `TenantFilter` para parsear `X-Tenant-ID` como UUID e limpar no `finally`.
+4. Evoluir a entidade `User` (senha + role + tenant_id) e serviços de autenticação/usuário.
+5. Criar migrations Flyway para `tenants`, `users`, `plans` e remover `ddl-auto` em seguida.
+6. Corrigir `PlanService.create` para definir `active = true` e garantir validação de tenant.
+
+## 7. Decisões de Design
+- **Java/Spring Boot:** Ecossistema maduro, segurança nativa (Security/JWT).
+- **Monolito Modular:** Menor complexidade de deploy, organização por domínios.
+- **Discriminator (coluna `tenant_id` + filtro):** Simples e performático para SaaS multi-tenant.o interativa (Swagger).
 
 A configuração atual utiliza banco **H2 em memória** para agilizar o desenvolvimento das regras de negócio.
 
