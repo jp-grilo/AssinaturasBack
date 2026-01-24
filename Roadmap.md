@@ -4,9 +4,91 @@
 
 ## 1. Visão Geral e Arquitetura
 
-O objetivo é construir um sistema robusto de assinaturas onde múltiplas empresas (Tenants) podem gerenciar seus clientes e planos de forma isolada.
+Plataforma SaaS B2B para gestão de assinaturas. Múltiplas empresas (Tenants) compartilham a mesma aplicação, com dados isolados por tenant.
 
-* **Arquitetura:** Monolito Modular (Modular Monolith).
+- **Arquitetura:** Monolito modular.
+- **Multi-tenancy:** Coluna `tenant_id` + filtro de Hibernate e `TenantContext` para isolar dados.
+- **Autenticação:** JWT + Spring Security; atualmente o `X-Tenant-ID` no header alimenta o `TenantContext` para otimização. Planejamento de migrar para tenantId apenas no claim do JWT.
+
+## 2. Papéis e Usuários
+
+- **Tenant (Empresa):** cliente do SaaS, dono dos planos e dados do seu escopo.
+- **Usuário final (Client):** pessoa/usuário que assina planos dentro de um Tenant.
+- **SUPER_ADMIN (GLOBAL_ADMIN):** administrador do SaaS, *sem tenant* (tenantId = null), tem acesso global e pode criar/manter tenants e usuários.
+
+Decisões principais:
+- Cada `User` é scoped por tenant (tem `tenantId`) — exceto `SUPER_ADMIN` que tem `tenantId = null`.
+- Emails são únicos por tenant (constraint composta `(tenant_id, email)`), permitindo o mesmo email em tenants distintos.
+
+## 3. Entidades Principais e Relações
+
+- **Tenant**
+    - id (UUID), name, slug, active, metadata
+    - 1 Tenant → N Users
+    - 1 Tenant → N Plans
+
+- **User** (herda `BaseEntity` com `tenant_id`) — representa usuário pertencente a um tenant (exceto SUPER_ADMIN)
+    - id, name, email, password(hashed), role (TENANT_ADMIN / CLIENT / GLOBAL_ADMIN)
+    - Unique constraint: `(tenant_id, email)`
+
+- **Plan** (tenant-scoped)
+    - id, name, description, price, billing_cycle, active, tenant_id
+
+- **Subscription** (nova entidade proposta)
+    - id, user_id, plan_id, tenant_id (redundante, mas reforça isolamento), start_date, end_date, next_billing_date,
+        status (TRIAL, ACTIVE, CANCELLED, PAST_DUE), price_snapshot, billing_cycle_snapshot, quantity, external_id
+    - Regras: não permitir múltiplas assinaturas do mesmo user para o mesmo tenant/plan
+    - Relações: User N..N Plan via Subscription (um usuário pode ter assinaturas em múltiplos tenants desde que existam contas separadas)
+
+Notas de modelagem:
+- `Plan` é tenant-scoped (pertence ao tenant). Se no futuro desejar planos globais, migrar para tabela global + tabela `tenant_plan`.
+- `User` é scoped por tenant para simplificar RBAC e isolamento. Um mesmo indivíduo pode ter contas em múltiplos tenants (emails iguais em tenants diferentes).
+
+## 4. Regras de Autenticação e TenantContext
+
+- Fluxo atual:
+    - Cliente envia `X-Tenant-ID` no header em requests (UUID). Esse header popula `TenantContext` via `TenantFilter`.
+    - JWT é emitido no login e contém claims (incluindo tenantId). `JwtAuthenticationFilter` valida token e popula `SecurityContext`.
+    - Precedência atual: `X-Tenant-ID` (header) possui prioridade para performance/filtragem; quando ausente, extrair tenantId do JWT.
+
+- Recomendações de segurança / migração:
+    - Migrar para tenantId exclusivamente no claim do JWT (reduz risco de spoofing). Durante migração, validar consistência header == claim quando ambos existirem.
+    - Tokens curtos + refresh tokens para reduzir janela de comprometimento.
+
+## 5. Regras de Negócio e Validações
+
+- Ao criar recursos (plans, subscriptions, users) validar que `TenantContext.getCurrentTenant()` está presente e que o recurso pertence ao tenant.
+- Apenas `SUPER_ADMIN` (tenantId = null) pode criar tenants e pode criar usuários para qualquer tenant.
+- Quando header estiver ausente, permitir a operação apenas se o usuário autenticado for `SUPER_ADMIN`.
+- Ao criar `Subscription`:
+    - Verificar `plan.tenantId == user.tenantId == TenantContext`.
+    - Não permitir duplicidade `user + plan` no mesmo tenant.
+    - Salvar `price_snapshot` e `billing_cycle_snapshot` para consistência histórica.
+
+## 6. Banco de Dados e Constraints
+
+- H2 usado em dev; Flyway será adicionado antes de migrar para PostgreSQL.
+- `BaseEntity` provê `tenant_id` e o filtro Hibernate é ativado por `TenantAspect`.
+- Constraint: `UNIQUE(tenant_id, email)` na tabela `users`.
+- `Plan` e `Subscription` estendem `BaseEntity` (filtráveis globalmente).
+
+## 7. Checklist / Próximos Passos (curto prazo)
+
+1. Implementar e registrar `TenantFilter` (na cadeia do Spring Security antes do JWT).  
+2. Ajustar `User`: remover `unique=true` global e adicionar constraint composta `(tenant_id, email)`.  
+3. Atualizar `JwtAuthenticationFilter`/`TokenService` para respeitar precedência header > claim e garantir que `TenantContext` seja populado.  
+4. Criar entidade `Subscription`, DTOs, repositório e serviço (validações de tenant + snapshots).  
+5. Ajustar `PlanService.create` para setar `tenantId` e `active = true`.  
+6. Adicionar testes básicos e rodar localmente com H2.  
+
+## 8. Decisões Arquiteturais e Racional
+
+- Preferência por tenantId no JWT a médio prazo para reduzir superfície de ataque.  
+- Manter `tenant_id` em todas entidades sensíveis e forçar validação server-side (não confiar em header enviado pelo cliente).  
+- SUPER_ADMIN como conta global (tenantId null) para administração.
+
+---
+Arquivo gerado/atualizado com decisões até o momento.
 * **Estratégia de Multi-tenancy:** Identificador de Coluna (`tenant_id`) em nível de banco de dados, utilizando filtros do Hibernate para garantir o isolamento.
 * **Padrão de Comunicação:** Injeção de Interfaces entre módulos, evoluindo para Event-Driven (Spring Events) conforme a necessidade.
 
