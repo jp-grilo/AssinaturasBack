@@ -18,6 +18,6 @@ import lombok.Setter;
 @Filter(name = "tenantFilter", condition = "tenant_id = :tenantId")
 public abstract class BaseEntity {
 
-    @Column(name = "tenant_id", nullable = false, updatable = false)
+    @Column(name = "tenant_id", nullable = true, updatable = false)
     private UUID tenantId;
 }
